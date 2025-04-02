@@ -78,7 +78,7 @@ app.whenReady().then(()=>{
   }
 
   // ipcRenderer.send("saveMemo", 데이터)를 호출하면 아래 함수가 호출된다. (saveMemo 라는 이벤트가 발생될 때 호출되는 메소드)
-  ipcMain.on("saveMemo", (_event, content: string)=>{
+  ipcMain.on("saveMemo",async (_event, content: string)=>{
      console.log("saveMemo!");  // 터미널 콘솔 창에 출력
      console.log(__dirname);    // C:\playground\node_work\file-system2\dist-electron
      const filePath = path.join(__dirname, "../file/myMemo.txt"); // path.join() 메소드: 인자로 받은 경로들을 합쳐서 하나의 경로를 리턴
@@ -86,6 +86,27 @@ app.whenReady().then(()=>{
      fs.mkdirSync(path.dirname(filePath), {recursive: true});     // 파일 만들기
      // 파일 문자열에 출력하기  
      fs.writeFileSync(filePath, content, "utf-8");                // 파일에 입력하기
+     // 알림 띄우기
+     const result = await dialog.showMessageBox(win!, {
+      type: "info",
+      buttons:["확인", "취소"],
+      defaultId:0,
+      title:"알림", 
+      message:"저장했습니다.",
+      detail:"file 폴더에 문자열이 저장되었습니다."
+     });
+     console.log(result.response);
+     /** async, await 를 사용하지 않으면 다음과 같다
+     dialog.showMessageBox(win!, {
+      type: "info",
+      buttons:["확인", "취소"],
+      defaultId:0,
+      title:"알림", 
+      message:"저장했습니다.",
+      detail:"file 폴더에 문자열이 저장되었습니다."
+     }).then(result => {console.log(result.response)});
+     
+      */
   });
 
   ipcMain.on("loadMemo", (event)=>{
@@ -162,6 +183,9 @@ const menuTemplate:Electron.MenuItemConstructorOptions = [
         click:async()=>{
           // 원하는 위치에 원하는 파일명으로 저장하기
           const {filePath} = await dialog.showSaveDialog({});
+          console.log(filePath);
+          // 파일을 선택하지 않았거나 취소 했을 때때
+          if(!filePath) return;
           // filePath 에는 선택된 파일의 경로가 들어온다.
           // 저장하기 위해서는 현재까지 입력한 내용을 가져와야 한다.
           win!.webContents.send("saveContent", {filePath});

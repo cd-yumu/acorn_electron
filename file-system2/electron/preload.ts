@@ -24,8 +24,9 @@ contextBridge.exposeInMainWorld('api', {
     });
   },
   load2: ()=>{
-    return ipcRenderer.invoke("loadMemo2");
-    // 이벤트를 발생시키는 invoke 의 리턴타입은 Promise 이다. 
+    return ipcRenderer.invoke("loadMemo2");(
+    // 이벤트를 발생시키는 invoke 의 리턴타입은 Promise 이다. (작업을 하고 결과 데이터를 바로 받을 수 있다.)
+    // ipcMain 에서는 이 invoke 를 handle 로 받는다.
   },
   load3: ()=>ipcRenderer.invoke("loadMemo3"),
   onSave: (callback:()=>string)=>{
