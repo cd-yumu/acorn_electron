@@ -52,10 +52,18 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 let win;
 function createWindow() {
   win = new BrowserWindow({
+    // BrowserWindow 이 객체 하나당 브라우저 프레임 하나다.
     icon: path.join(process.env.VITE_PUBLIC, "electron-vite.svg"),
     webPreferences: {
       preload: path.join(__dirname, "preload.mjs")
+      // 이 브라우저 윈도우는 preload.mjs 를 사용한다. (작성한 preload.ts 는 preload.mjs 파일로 바뀐다.)
     }
+    //transparent: true,
+    //frame:false,
+    //fullscreen: true,
+    //alwaysOnTop:true,
+    //skipTaskbar: true,
+    //resizable:false 
   });
   win.webContents.on("did-finish-load", () => {
     win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
