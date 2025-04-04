@@ -2,7 +2,8 @@ import { app, BrowserWindow, dialog, globalShortcut } from 'electron'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import "./ipc-handler"
+//import "./ipc-handler"
+import { setBrowserWindow } from './ipc-handler'  // setBrowserWindow 를 가져오는 시점에 ./ipc-handler 코드는 모두 실행된다.
 
 const require = createRequire(import.meta.url)
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -25,33 +26,44 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
-let win: BrowserWindow | null
+let mainWindow: BrowserWindow | null = null;
+let overlayWindow: BrowserWindow | null = null;
 
-function createWindow() {
-  win = new BrowserWindow({ // BrowserWindow 이 객체 하나당 브라우저 프레임 하나다.
+function createWindows() {
+  mainWindow = new BrowserWindow({
     icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.mjs'), // 이 브라우저 윈도우는 preload.mjs 를 사용한다. (작성한 preload.ts 는 preload.mjs 파일로 바뀐다.)
+      preload: path.join(__dirname, 'preload.mjs'),
     },
-    //transparent: true,
-    //frame:false,
-    //fullscreen: true,
-    //alwaysOnTop:true,
-    //skipTaskbar: true,
-    //resizable:false 
-  })
+    show:true,
+    resizable:true
+  });
 
-  // Test active push message to Renderer-process.
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', (new Date).toLocaleString())
-  })
+  overlayWindow = new BrowserWindow({
+    icon: path.join(process.env.VITE_PUBLIC, 'electron-vite.svg'),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.mjs'),
+    },
+    transparent:true, // transparent:true 와 frame:false 를 모두 설정해야 투명해진다.
+    frame:false,
+    resizable:false,
+    alwaysOnTop:true,
+    skipTaskbar:true,
+    show:false,
+    fullscreen:true
+  });
 
+  //만일 개발중이면 vite 서버가 제공해주는 url 로딩 
   if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL)
-  } else {
+    mainWindow.loadURL(VITE_DEV_SERVER_URL)
+    overlayWindow.loadURL(VITE_DEV_SERVER_URL)
+  } else { //배포된 상태면 index.html 을 로딩 
     // win.loadFile('dist/index.html')
-    win.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    mainWindow.loadFile(path.join(RENDERER_DIST, 'index.html'))
+    overlayWindow.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
+  // ipc-handler 에 BrowserWindow 객체 2 개를 전달한다.
+  setBrowserWindow(mainWindow, overlayWindow);
 }
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -60,7 +72,8 @@ function createWindow() {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
-    win = null
+    mainWindow = null
+    overlayWindow = null
   }
 })
 
@@ -68,33 +81,42 @@ app.on('activate', () => {
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow()
+    createWindows()
   }
 })
 
 // app 이 초기화 되고 준비가 완료 되었을때 호출되는 함수 등록 
 app.whenReady().then(()=>{
   // BrowerWindow 를 만들고 
-  createWindow();
+  createWindows();
 })
 
 app.on("browser-window-focus", ()=>{
+  globalShortcut.register("Control+q", ()=>{
+    mainWindow?.hide();
+    overlayWindow?.show();
+    overlayWindow?.webContents.send("capture-start");
+  });
+
+  globalShortcut.register("Escape", ()=>{
+    mainWindow?.show();
+    overlayWindow?.hide();
+  });
+
   // Control+t 를 누르면 개발 tool 이 열리도록 한다.
   globalShortcut.register("Control+t", ()=>{
-    win!.webContents.openDevTools();
+    mainWindow?.webContents.openDevTools();
   });
 
   // Control+s 를 누르면 파일 시스템에 저장이 되도록 한다.
   globalShortcut.register("Control+s", async ()=>{
-    win!.webContents.send("get-image");
-  });
+    mainWindow?.webContents.send("get-image");
+  })
 });
-
 //BrowserWindow 의 focus 를 잃었을때 실행할 함수 
 app.on("browser-window-blur", ()=>{
   globalShortcut.unregisterAll();
 });
-
 //앱종료시
 app.on("will-quit", ()=>{
   globalShortcut.unregisterAll();

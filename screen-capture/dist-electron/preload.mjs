@@ -7,6 +7,18 @@ electron.contextBridge.exposeInMainWorld("api", {
       const imageData = callback();
       electron.ipcRenderer.send("save-image", imageData);
     });
+  },
+  onCaptureStart: (callback) => {
+    electron.ipcRenderer.on("capture-start", () => {
+      callback();
+    });
+  },
+  selectCapture: (area) => {
+    electron.ipcRenderer.send("select-capture", area);
+  },
+  onCapturedData: (callback) => {
+    electron.ipcRenderer.on("captured-data", (_event, data) => {
+      callback(data);
+    });
   }
-  //imageUrl:()=>ipcRenderer.on("get-image")
 });
