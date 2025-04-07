@@ -92,8 +92,10 @@ const handleMouseDown = (e: React.MouseEvent) => {
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
+
     // mouse move 이벤트가 발생하더라도 현재 그리는 중이 아니면 함수를 여기서 종료!
     if (!isDrawing) return;
+
     // 현재 마우스의 좌표 얻어내기 
     const rect = canvasRef.current!.getBoundingClientRect();
     const scaleX = canvasRef.current!.width / rect.width;
@@ -113,6 +115,22 @@ const handleMouseDown = (e: React.MouseEvent) => {
     const ctx = canvasRef.current?.getContext("2d");
 
     if (ctx) {
+
+      // 1. 전체 캔버스를 반투명한 어두운 색으로 덮는다.
+      ctx.clearRect(0,0,canvasRef.current!.width, canvasRef.current!.height);
+      ctx.fillStyle = 'rgb(0,0,0,0.2)';
+      ctx.fillRect(0,0,canvasRef.current!.width, canvasRef.current!.height);
+
+      // 2. 선택한 사각형 영역만 clear 해서 완전 투명하게 만든다.
+      ctx.clearRect(x,y,width, height);
+
+      // 3. 선택 영역 외곽선 그리기
+      ctx.strokeStyle = 'red';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x,y,width, height);
+
+
+
       //  .clearRect(x, y, width, height)  사각형 영역에 그려진 내용을 모두 지우기 
       ctx.clearRect(0, 0, canvasStyle.width, canvasStyle.height);
       // 체우는 색상 
